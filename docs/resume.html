@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #111;
+    --rule: #222;
+    --ui-bg: #f6f6f7;
+    --ui-line: #d6d6db;
+    --accent: #2f5bd3;
+    --warn: #c62828;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e6e6ea;
+    color: var(--ink);
+    font-family: system-ui, "Malgun Gothic", sans-serif;
+  }
+
+  /* ---------- 위쪽 도구 막대 (인쇄 땐 숨김) ---------- */
+  .toolbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 10px 16px;
+    background: var(--ui-bg);
+    border-bottom: 1px solid var(--ui-line);
+    font-size: 14px;
+  }
+  .toolbar .title { font-weight: 700; margin-right: 6px; }
+  .toolbar button, .toolbar select {
+    font: inherit; font-size: 13px;
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--ui-line); background: #fff; cursor: pointer;
+  }
+  .toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .toolbar button:hover { filter: brightness(0.96); }
+  .toolbar .spacer { flex: 1; }
+  .status { color: #666; font-size: 12px; }
+  .over { color: var(--warn); font-weight: 600; font-size: 12px; display: none; }
+  .over.show { display: inline; }
+  .hint {
+    max-width: 210mm; margin: 14px auto 0; padding: 0 16px;
+    color: #555; font-size: 13px; line-height: 1.6;
+  }
+
+  /* ---------- A4 종이 ---------- */
+  .stage { padding: 18px 16px 60px; overflow-x: hidden; }
+  .fit { margin: 0 auto; }
+  .page {
+    position: relative;
+    width: 210mm; min-height: 297mm;
+    margin: 0;
+    transform-origin: top left;
+    padding: 13mm 15mm 12mm;
+    background: #fff;
+    box-shadow: 0 2px 14px rgba(0,0,0,.15);
+    font-family: var(--doc-font);
+    font-size: 10.5pt; line-height: 1.32;
+  }
+  /* 한 장 끝 표시선 */
+  .page::after {
+    content: "A4 한 장 끝"; position: absolute; left: 0; right: 0; top: 297mm;
+    border-top: 2px dashed var(--warn); color: var(--warn);
+    font: 11px system-ui, sans-serif; text-align: right; padding-right: 6px;
+    display: none;
+  }
+  .page.overflow::after { display: block; }
+
+  body[data-font="garamond"] { --doc-font: "EB Garamond", "Noto Serif KR", Georgia, serif; }
+  body[data-font="arial"]    { --doc-font: Arial, "Malgun Gothic", sans-serif; }
+  body[data-font="calibri"]  { --doc-font: Calibri, Carlito, "Malgun Gothic", sans-serif; }
+  body[data-font="arial"] .page, body[data-font="calibri"] .page { font-size: 10pt; }
+
+  /* ---------- 이력서 내용 ---------- */
+  .name { text-align: center; font-size: 22pt; font-weight: 400; margin: 0; line-height: 1.2; }
+  .contact { text-align: center; margin: 3px 0 0; }
+  .contact .dot { padding: 0 4px; }
+
+  .section { margin-top: 14px; }
+  .section > h2 {
+    font-size: 14pt; font-weight: 400; text-transform: uppercase; letter-spacing: .02em;
+    margin: 0 0 5px; padding-bottom: 1px;
+    border-bottom: 1.2px solid var(--rule); line-height: 1.15;
+  }
+  .entry { margin-bottom: 4px; }
+  .section.exp .entry { margin-bottom: 9px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .row .r { text-align: right; white-space: nowrap; flex-shrink: 0; }
+  .indent { padding-left: 4.5mm; }
+  .role { text-transform: uppercase; }
+  ul.bullets { margin: 1px 0 0; padding-left: 4.5mm; list-style: none; }
+  ul.bullets li { position: relative; padding-left: 3.5mm; }
+  ul.bullets li::before { content: "•"; position: absolute; left: 0; }
+
+  .skills .entry { display: grid; grid-template-columns: 32mm 1fr; gap: 10px; margin-bottom: 3px; }
+  .footer { text-align: center; margin-top: 18px; letter-spacing: .12em; font-weight: 600; font-size: 10pt; }
+
+  /* ---------- 편집 표시 ---------- */
+  [contenteditable] { outline: none; border-radius: 2px; min-width: 1ch; }
+  [contenteditable]:hover { background: #f1f5ff; }
+  [contenteditable]:focus { background: #e6eeff; box-shadow: 0 0 0 1px #9db4f0; }
+  [contenteditable]:empty::before { content: attr(data-ph); color: #aaa; }
+  .picked { box-shadow: 0 0 0 1px #c5d3fa; border-radius: 3px; }
+
+  /* 항목 옆에 뜨는 작은 버튼 묶음 */
+  .itembar {
+    position: absolute; z-index: 15; display: none;
+    gap: 2px; padding: 3px; background: #fff;
+    border: 1px solid var(--ui-line); border-radius: 7px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    font: 12px system-ui, "Malgun Gothic", sans-serif;
+  }
+  .itembar.show { display: flex; flex-direction: column; }
+  .itembar button {
+    font: inherit; border: 0; background: none; padding: 4px 8px; border-radius: 5px; cursor: pointer; text-align: left; white-space: nowrap;
+  }
+  .itembar button:hover { background: #eef1f8; }
+  .itembar button.del { color: var(--warn); }
+  .itembar .lbl { color: #888; font-size: 11px; padding: 2px 8px 3px; }
+
+  /* ---------- 인쇄 / PDF ---------- */
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: #fff; }
+    .toolbar, .hint, .itembar { display: none !important; }
+    .stage { padding: 0; overflow: visible; }
+    .fit { width: auto !important; height: auto !important; }
+    .page { box-shadow: none; margin: 0; min-height: auto; transform: none !important; }
+    .page::after { display: none !important; }
+    [contenteditable] { background: none !important; box-shadow: none !important; }
+    [contenteditable]:empty::before { content: ""; }
+    .picked { box-shadow: none; }
+  }
+</style>
+</head>
+<body data-font="garamond">
+
+<div class="toolbar">
+  <span class="title">이력서 편집기</span>
+  <button class="primary" id="btnPdf" title="인쇄 창에서 대상을 'PDF로 저장'으로 고르세요">PDF로 저장</button>
+  <button id="btnHtml" title="지금 내용 그대로 HTML 파일로 내려받아요">HTML 파일로 내려받기</button>
+  <select id="fontSel" title="글꼴">
+    <option value="garamond">글꼴: Garamond (원본 느낌)</option>
+    <option value="arial">글꼴: Arial</option>
+    <option value="calibri">글꼴: Calibri</option>
+  </select>
+  <button id="btnAddSection">+ 섹션 추가</button>
+  <button id="btnReset">처음 양식으로</button>
+  <span class="spacer"></span>
+  <span class="over" id="overMsg">⚠ A4 한 장을 넘었어요</span>
+  <span class="status" id="status">자동 저장 켜짐</span>
+</div>
+
+<p class="hint">
+  글자를 눌러 바로 고치세요. 고친 내용은 이 브라우저에 자동 저장돼요.
+  항목 위에 마우스를 올리면 왼쪽에 <b>위로 · 아래로 · 복제 · 삭제</b> 버튼이 나와요.
+  불릿에서 <b>Enter</b>는 새 줄, 빈 줄에서 <b>Backspace</b>는 줄 지우기예요.
+  다 쓰면 <b>PDF로 저장</b> → 대상 "PDF로 저장" → 여백 "없음", "배경 그래픽" 끄기로 저장하세요.
+</p>
+
+<div class="stage" id="stage">
+<div class="fit" id="fit">
+<div class="page" id="page">
+<div id="resume">
+
+  <h1 class="name" data-ph="이름">Your Name</h1>
+  <p class="contact">
+    <span data-ph="주소">123 Street, Gangnam-gu, Seoul</span><span class="dot">•</span><span data-ph="전화">+82-10-0000-0000</span><span class="dot">•</span><span data-ph="이메일">you@email.com</span>
+  </p>
+
+  <div class="section">
+    <h2 data-ph="섹션 제목">Education</h2>
+    <div class="entry">
+      <div class="row"><div class="l"><b>University Name:</b> <span>College of Social Sciences</span></div><div class="r">Seoul, Korea</div></div>
+      <div class="row indent"><div class="l">MA, Human Resource Development</div><div class="r">03/2024 – 02/2026 (Expected)</div></div>
+    </div>
+    <div class="entry">
+      <div class="row"><div class="l"><b>University Name:</b> <span>College of Business</span></div><div class="r">Seoul, Korea</div></div>
+      <div class="row indent"><div class="l">BA in Business Administration. Minor in Psychology</div><div class="r">02/2024</div></div>
+      <div class="row indent"><div class="l">GPA: 4.0 / 4.5, TOEIC 950, OPIc AL</div><div class="r"></div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2 data-ph="섹션 제목">Honors</h2>
+    <div class="entry">
+      <div class="row"><div class="l"><b>President,</b> <span>HR Study Club at University Name</span></div><div class="r">2023</div></div>
+      <div class="indent">Organized weekly case studies, guest speaker sessions and budget for 40 members.</div>
+    </div>
+    <div class="entry">
+      <div class="row"><div class="l"><b>Scholarship Name,</b> <span>Grant recipient</span></div><div class="r">2022</div></div>
+      <div class="indent">One of ten students selected for academic excellence and leadership.</div>
+    </div>
+  </div>
+
+  <div class="section exp">
+    <h2 data-ph="섹션 제목">Experience</h2>
+    <div class="entry">
+      <div class="row"><div class="l"><b>Company Name,</b> <span>Seoul, Korea</span></div><div class="r">01/2025 – Present</div></div>
+      <div class="role">HR Intern, People Team</div>
+      <ul class="bullets">
+        <li>Streamlined the onboarding process for 120 new hires, cutting setup time by 30%</li>
+        <li>Analyzed engagement survey data and presented key findings to HR leadership</li>
+        <li>Coordinated campus recruiting events with 5 universities</li>
+      </ul>
+    </div>
+    <div class="entry">
+      <div class="row"><div class="l"><b>Company Name,</b> <span>Seoul, Korea</span></div><div class="r">07/2024 – 12/2024</div></div>
+      <div class="role">Recruiting Assistant</div>
+      <ul class="bullets">
+        <li>Screened 300+ applications and scheduled interviews for 4 open roles</li>
+        <li>Built a candidate tracking sheet that the team adopted as standard</li>
+      </ul>
+    </div>
+    <div class="entry">
+      <div class="row"><div class="l"><b>Organization Name,</b> <span>Seoul, Korea</span></div><div class="r">03/2023 – 06/2023</div></div>
+      <div class="role">Volunteer Mentor</div>
+      <ul class="bullets">
+        <li>Mentored 8 high school students on career planning and study skills</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="section skills">
+    <h2 data-ph="섹션 제목">Skills</h2>
+    <div class="entry"><b>Languages</b><div>Korean (Native), English (Fluent), Japanese (Basic)</div></div>
+    <div class="entry"><b>Tools</b><div>Excel (Pivot, VLOOKUP), PowerPoint, Notion, Python (basic)</div></div>
+    <div class="entry"><b>Certificates</b><div>Professional HR Certificate (2024), Computer Literacy Level 1</div></div>
+  </div>
+
+  <div class="footer" data-ph="웹사이트 (비워 두면 안 나와요)">www.yourwebsite.com</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="itembar" id="itembar">
+  <span class="lbl" id="ibLabel">항목</span>
+  <button data-act="up">↑ 위로</button>
+  <button data-act="down">↓ 아래로</button>
+  <button data-act="dup">＋ 복제</button>
+  <button data-act="del" class="del">✕ 삭제</button>
+</div>
+
+<script>
+(function () {
+  var KEY = "resume-editor:" + location.pathname;
+  var root = document.getElementById("resume");
+  var page = document.getElementById("page");
+  var statusEl = document.getElementById("status");
+  var overMsg = document.getElementById("overMsg");
+  var fontSel = document.getElementById("fontSel");
+  var itembar = document.getElementById("itembar");
+  var ibLabel = document.getElementById("ibLabel");
+  var ORIGINAL = root.innerHTML;
+
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  // 글자가 들어가는 칸만 고칠 수 있게 표시
+  var LEAF = ".name, .contact > span:not(.dot), h2, .row .l > b, .row .l > span, .row > .l:not(:has(> b)), .row > .r, " +
+             ".entry > .indent:not(.row), .role, ul.bullets li, .skills .entry > b, .skills .entry > div, .footer";
+  function makeEditable() {
+    root.querySelectorAll(LEAF).forEach(function (el) {
+      el.setAttribute("contenteditable", "true");
+      el.setAttribute("spellcheck", "false");
+    });
+  }
+
+  // 저장
+  var timer;
+  function save() {
+    clearTimeout(timer);
+    statusEl.textContent = "저장 중…";
+    timer = setTimeout(function () {
+      store(KEY, root.innerHTML);
+      statusEl.textContent = "자동 저장됨 " + new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      checkOverflow();
+    }, 400);
+  }
+
+  // A4 한 장 넘는지 확인
+  function checkOverflow() {
+    var a4 = 297 * 96 / 25.4;
+    var over = page.scrollHeight > a4 + 1;
+    page.classList.toggle("overflow", over);
+    overMsg.classList.toggle("show", over);
+    fitToWidth();
+  }
+
+  // 창이 좁으면 종이를 통째로 줄여서 보여주기 (PDF 크기는 그대로)
+  var stage = document.getElementById("stage");
+  var fitBox = document.getElementById("fit");
+  function fitToWidth() {
+    var avail = stage.clientWidth - 32;
+    var w = page.offsetWidth, h = page.offsetHeight;
+    var s = Math.min(1, avail / w);
+    page.style.transform = s < 1 ? "scale(" + s + ")" : "";
+    fitBox.style.width = (w * s) + "px";
+    fitBox.style.height = (h * s) + "px";
+  }
+  window.addEventListener("resize", fitToWidth);
+
+  // 불러오기
+  var saved = load(KEY);
+  if (saved) root.innerHTML = saved;
+  var f = load(KEY + ":font");
+  if (f) { document.body.dataset.font = f; fontSel.value = f; }
+  makeEditable();
+  checkOverflow();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(checkOverflow);
+  window.addEventListener("load", checkOverflow);
+
+  root.addEventListener("input", save);
+
+  // 붙여넣기는 글자만
+  root.addEventListener("paste", function (e) {
+    e.preventDefault();
+    var t = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, t.replace(/\s*\n\s*/g, " "));
+  });
+
+  // Enter / Backspace 처리
+  root.addEventListener("keydown", function (e) {
+    var el = e.target;
+    if (!el.isContentEditable) return;
+    if (el.tagName === "LI") {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        var li = document.createElement("li");
+        li.setAttribute("contenteditable", "true");
+        li.setAttribute("spellcheck", "false");
+        el.after(li); li.focus(); save();
+      } else if (e.key === "Backspace" && el.textContent === "") {
+        var ul = el.parentElement;
+        if (ul.children.length > 1) {
+          e.preventDefault();
+          var prev = el.previousElementSibling || el.nextElementSibling;
+          el.remove(); placeCaretEnd(prev); save();
+        }
+      }
+    } else if (e.key === "Enter") {
+      e.preventDefault(); el.blur();
+    }
+  });
+  function placeCaretEnd(el) {
+    el.focus();
+    var r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    var s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  }
+
+  // 항목 옆 버튼 묶음
+  var target = null, hideTimer;
+  function pick(el) {
+    if (target === el) return;
+    if (target) target.classList.remove("picked");
+    target = el;
+    if (!el) { itembar.classList.remove("show"); return; }
+    el.classList.add("picked");
+    ibLabel.textContent = el.classList.contains("section") ? "섹션 전체" : "이 항목";
+    var r = el.getBoundingClientRect();
+    itembar.classList.add("show");
+    var left = r.left + scrollX - itembar.offsetWidth - 10;
+    if (left < 4) left = 4;
+    itembar.style.left = left + "px";
+    itembar.style.top = (r.top + scrollY) + "px";
+  }
+  root.addEventListener("mouseover", function (e) {
+    clearTimeout(hideTimer);
+    var t = e.target.closest("h2") ? e.target.closest(".section") : e.target.closest(".entry");
+    if (t) pick(t);
+  });
+  root.addEventListener("mouseleave", function () { hideTimer = setTimeout(function () { pick(null); }, 500); });
+  itembar.addEventListener("mouseenter", function () { clearTimeout(hideTimer); });
+  itembar.addEventListener("mouseleave", function () { hideTimer = setTimeout(function () { pick(null); }, 300); });
+  itembar.addEventListener("click", function (e) {
+    var act = e.target.dataset.act; if (!act || !target) return;
+    var t = target, cls = t.classList.contains("section") ? "section" : "entry";
+    if (act === "up") {
+      var p = t.previousElementSibling;
+      if (p && p.classList.contains(cls)) p.before(t);
+    } else if (act === "down") {
+      var n = t.nextElementSibling;
+      if (n && n.classList.contains(cls)) n.after(t);
+    } else if (act === "dup") {
+      var c = t.cloneNode(true); c.classList.remove("picked"); t.after(c);
+    } else if (act === "del") {
+      var what = cls === "section" ? "이 섹션 전체를" : "이 항목을";
+      if (!confirm(what + " 지울까요?")) return;
+      t.remove(); pick(null); save(); return;
+    }
+    var keep = t; pick(null); pick(keep); save();
+  });
+
+  // 섹션 추가
+  document.getElementById("btnAddSection").addEventListener("click", function () {
+    var s = document.createElement("div");
+    s.className = "section";
+    s.innerHTML = '<h2>New Section</h2>' +
+      '<div class="entry"><div class="row"><div class="l"><b>Title,</b> <span>Organization</span></div><div class="r">2025</div></div>' +
+      '<ul class="bullets"><li>Describe what you did, starting with a verb</li></ul></div>';
+    var footer = root.querySelector(".footer");
+    footer ? footer.before(s) : root.appendChild(s);
+    makeEditable(); save();
+    s.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
+  // 글꼴
+  fontSel.addEventListener("change", function () {
+    document.body.dataset.font = fontSel.value;
+    store(KEY + ":font", fontSel.value);
+    setTimeout(checkOverflow, 300);
+  });
+
+  // 처음 양식으로
+  document.getElementById("btnReset").addEventListener("click", function () {
+    if (!confirm("지금까지 고친 내용이 모두 사라지고 처음 양식으로 돌아가요. 계속할까요?")) return;
+    root.innerHTML = ORIGINAL; makeEditable(); save();
+  });
+
+  // PDF
+  document.getElementById("btnPdf").addEventListener("click", function () {
+    pick(null);
+    if (document.activeElement) document.activeElement.blur();
+    var name = (root.querySelector(".name") || {}).textContent || "Resume";
+    var old = document.title;
+    document.title = name.trim() + " - Resume";
+    window.print();
+    document.title = old;
+  });
+
+  // 지금 상태로 HTML 내려받기
+  document.getElementById("btnHtml").addEventListener("click", function () {
+    pick(null);
+    var html = "<!doctype html>\n" + document.documentElement.outerHTML;
+    var blob = new Blob([html], { type: "text/html" });
+    var a = document.createElement("a");
+    var name = ((root.querySelector(".name") || {}).textContent || "resume").trim().replace(/\s+/g, "_");
+    a.href = URL.createObjectURL(blob);
+    a.download = name + "_resume.html";
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+
+  // 빈 칸은 인쇄에서 자리 차지 안 하게 (웹사이트 줄 등)
+  window.addEventListener("beforeprint", function () {
+    var ft = root.querySelector(".footer");
+    if (ft) ft.style.display = ft.textContent.trim() ? "" : "none";
+  });
+  window.addEventListener("afterprint", function () {
+    var ft = root.querySelector(".footer");
+    if (ft) ft.style.display = "";
+  });
+})();
+</script>
+</body>
+</html>
